@@ -1,9 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import webhookHandler from './webhook';
 
 // Simulerer en Tally webhook med testdata
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'POST /api/test med { email: "din@email.dk" }' });
+    return res.status(405).json({ error: 'POST /api/test med { "email": "din@email.dk" }' });
   }
 
   const { email } = req.body;
@@ -11,8 +12,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Angiv email i body: { "email": "din@email.dk" }' });
   }
 
-  // Byg Tally-lignende payload
-  const tallyPayload = {
+  // Byg Tally-lignende payload og kald webhook direkte
+  req.body = {
     data: {
       fields: [
         { label: 'Email', value: email },
@@ -33,14 +34,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   };
 
-  // Forward til webhook endpoint
-  const baseUrl = `https://${req.headers.host}`;
-  const webhookRes = await fetch(`${baseUrl}/api/webhook`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(tallyPayload),
-  });
-
-  const result = await webhookRes.json();
-  res.status(webhookRes.status).json({ test: true, ...result });
+  return webhookHandler(req, res);
 }

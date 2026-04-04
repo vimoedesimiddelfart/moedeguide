@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MødeGuide – VisitMiddelfart</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-stone-50 text-stone-900 min-h-screen">
+  <main class="max-w-2xl mx-auto px-4 py-12">
+    <div class="text-center mb-8">
+      <h1 class="text-3xl font-bold mb-2">MødeGuide Middelfart</h1>
+      <p class="text-stone-500">Automatisk mødeforslag baseret på Tally-survey</p>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-stone-200 p-6 mb-6">
+      <h2 class="text-lg font-semibold mb-4">Sådan virker det</h2>
+      <ol class="space-y-3 text-sm text-stone-600">
+        <li class="flex gap-3">
+          <span class="flex-shrink-0 w-6 h-6 bg-teal-700 text-white rounded-full flex items-center justify-center text-xs font-bold">1</span>
+          Kunde udfylder Tally-survey med ønsker til møde/konference
+        </li>
+        <li class="flex gap-3">
+          <span class="flex-shrink-0 w-6 h-6 bg-teal-700 text-white rounded-full flex items-center justify-center text-xs font-bold">2</span>
+          Tally sender webhook til <code class="bg-stone-100 px-1 rounded">/api/webhook</code>
+        </li>
+        <li class="flex gap-3">
+          <span class="flex-shrink-0 w-6 h-6 bg-teal-700 text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>
+          Claude matcher behov med aktør-data og genererer 3 forslag
+        </li>
+        <li class="flex gap-3">
+          <span class="flex-shrink-0 w-6 h-6 bg-teal-700 text-white rounded-full flex items-center justify-center text-xs font-bold">4</span>
+          Skræddersyet email sendes automatisk til kunden
+        </li>
+      </ol>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-stone-200 p-6 mb-6">
+      <h2 class="text-lg font-semibold mb-4">Test med din email</h2>
+      <p class="text-sm text-stone-500 mb-4">Send en test-forespørgsel (35 pers., 2 dage, konference med natur og teambuilding)</p>
+      <div class="flex gap-2">
+        <input type="email" id="test-email" placeholder="din@email.dk" class="flex-1 rounded-lg border border-stone-300 px-3 py-2 text-sm">
+        <button onclick="sendTest()" id="test-btn" class="px-4 py-2 rounded-lg bg-teal-700 text-white text-sm hover:bg-teal-800 transition">
+          Send testforslag
+        </button>
+      </div>
+      <div id="test-result" class="mt-4 text-sm hidden"></div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-stone-200 p-6">
+      <h2 class="text-lg font-semibold mb-4">Opsætning</h2>
+      <div class="space-y-3 text-sm text-stone-600">
+        <div>
+          <h3 class="font-medium text-stone-800">Tally webhook URL:</h3>
+          <code class="bg-stone-100 px-2 py-1 rounded block mt-1" id="webhook-url"></code>
+        </div>
+        <div>
+          <h3 class="font-medium text-stone-800">Miljøvariabler (Vercel):</h3>
+          <ul class="mt-1 space-y-1">
+            <li><code class="bg-stone-100 px-1 rounded">ANTHROPIC_API_KEY</code> – Claude API nøgle</li>
+            <li><code class="bg-stone-100 px-1 rounded">GMAIL_USER</code> – Gmail afsender-adresse</li>
+            <li><code class="bg-stone-100 px-1 rounded">GMAIL_APP_PASSWORD</code> – Gmail app-adgangskode</li>
+            <li><code class="bg-stone-100 px-1 rounded">INTERN_EMAIL</code> – Intern kopi af alle forslag (valgfrit)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    document.getElementById('webhook-url').textContent = window.location.origin + '/api/webhook';
+
+    async function sendTest() {
+      const email = document.getElementById('test-email').value;
+      if (!email) { alert('Angiv en email'); return; }
+
+      const btn = document.getElementById('test-btn');
+      const result = document.getElementById('test-result');
+      btn.disabled = true;
+      btn.textContent = 'Sender...';
+      result.classList.remove('hidden');
+      result.innerHTML = '<p class="text-stone-500">Genererer 3 forslag med AI og sender email... (kan tage 30-60 sek)</p>';
+
+      try {
+        const res = await fetch('/api/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          result.innerHTML = `<p class="text-green-700 font-medium">Forslag sendt til ${email}!</p>`;
+        } else {
+          result.innerHTML = `<p class="text-red-600">Fejl: ${data.error}</p>`;
+        }
+      } catch (e) {
+        result.innerHTML = `<p class="text-red-600">Fejl: ${e.message}</p>`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Send testforslag';
+      }
+    }
+  </script>
+</body>
+</html>
